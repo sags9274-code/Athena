@@ -3,12 +3,12 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const NAV_LINKS = [
-  { label: 'The Altar', to: '/' },
-  { label: 'Sacred Covenants', to: '/contracts' },
-  { label: 'Sacred Offerings', to: '/wishlist' },
-  { label: 'Book of Judgment', to: '/wall-of-shame' },
-  { label: 'Daily Devotions', to: '/free-tasks' },
-  { label: 'The Reliquary', to: '/store' },
+  { label: 'Home', to: '/' },
+  { label: 'Contracts', to: '/contracts' },
+  { label: 'Wishlist', to: '/wishlist' },
+  { label: 'Wall of Shame', to: '/wall-of-shame' },
+  { label: 'Tasks', to: '/free-tasks' },
+  { label: 'Store', to: '/store' },
 ];
 
 export default function Navbar() {
@@ -75,7 +75,7 @@ export default function Navbar() {
               }
               style={{ color: 'var(--color-gold)', fontWeight: 'bold' }}
             >
-              The Sanctum
+              Dashboard
             </NavLink>
           )}
         </div>
@@ -83,7 +83,7 @@ export default function Navbar() {
         {/* Actions */}
         <div className="navbar__actions">
           <button className="navbar__cta" id="nav-vip-btn" onClick={handleAuthAction}>
-            {user ? 'Depart Shrine' : 'Kneel & Authenticate'}
+            {user ? 'Logout' : 'Login'}
           </button>
           {user ? (
             <Link to="/profile" className="navbar__avatar" id="nav-avatar" title="View Sacred Profile" style={{ overflow: 'hidden' }}>
@@ -135,11 +135,11 @@ export default function Navbar() {
             style={{ color: 'var(--color-gold)' }}
             onClick={() => setMobileOpen(false)}
           >
-            The Sanctum
+            Dashboard
           </NavLink>
         )}
         <button className="navbar__cta" style={{ marginTop: '1rem' }} onClick={handleAuthAction}>
-          {user ? 'Depart Shrine' : 'Kneel & Authenticate'}
+          {user ? 'Logout' : 'Login'}
         </button>
       </div>
     </>

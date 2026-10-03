@@ -92,7 +92,7 @@
   }
   .navbar__mobile-link:hover,
   .navbar__mobile-link--active {
-    background: rgba(236, 72, 153, 0.1);
+    background: rgba(114, 22, 43, 0.1);
   }
 
   /* Hero Section */
@@ -242,7 +242,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 8px 0 !important;
-    border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+    border-bottom: 1px solid rgba(201,168,76,0.05) !important;
     font-size: 0.9rem;
   }
   .dashboard-table td:last-child {
