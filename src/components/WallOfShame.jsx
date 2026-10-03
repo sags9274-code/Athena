@@ -1,360 +1,110 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../supabaseClient';
-
-const ACCEPTED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'webm', 'mov'];
-const ACCEPTED_MIME_TYPES = [
-  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-  'video/mp4', 'video/webm', 'video/quicktime'
-];
+import { apiFetch } from '../utils/api';
 
 export default function WallOfShame() {
-  const [images, setImages] = useState([]);
-  
-  // Multi-upload state
-  const [isUploadOpen, setIsUploadOpen] = useState(false);
-  const [pendingFiles, setPendingFiles] = useState([]);
-  const [pendingPreviews, setPendingPreviews] = useState([]);
-  
+  const [posts, setPosts] = useState([]);
   const [caption, setCaption] = useState('');
-  const [tag, setTag] = useState('Exposed');
-  const [isDragging, setIsDragging] = useState(false);
-  const [errorMsg, setErrorMsg] = useState(null);
+  const [tag, setTag] = useState('Sinful Penance');
+  const [mediaUrl, setMediaUrl] = useState('');
   const [loading, setLoading] = useState(true);
-  const [isNsfw, setIsNsfw] = useState(false);
-  const [unblurredItems, setUnblurredItems] = useState(new Set());
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Comments & Likes state
-  const [comments, setComments] = useState({});
   const [newComment, setNewComment] = useState({});
-  const [likes, setLikes] = useState({});
-  const [sortMode, setSortMode] = useState('newest');
 
-  const { role, user } = useAuth();
+  const { role, user, username } = useAuth();
   const canEdit = role === 'goddess' || role === 'developer';
 
-  const fileInputRef = useRef(null);
-
   useEffect(() => {
-    fetchWallOfShame();
+    fetchBookOfJudgment();
   }, [user]);
 
-  const fetchWallOfShame = async () => {
+  const fetchBookOfJudgment = async () => {
     setLoading(true);
-    const { data: posts, error: postsError } = await supabase
-      .from('wall_of_shame')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (postsError) {
-      console.error('Error fetching wall of shame:', postsError);
+    try {
+      const data = await apiFetch('/api/wall-of-shame');
+      setPosts(data.posts || []);
+    } catch (err) {
+      console.error('Error fetching Book of Judgment:', err);
+    } finally {
       setLoading(false);
-      return;
     }
-    
-    setImages(posts || []);
-    
-    if (posts && posts.length > 0) {
-      const postIds = posts.map(p => p.id);
-      const { data: commentsData, error: commentsError } = await supabase
-        .from('shame_comments')
-        .select(`
-          id, shame_id, comment_text, created_at, user_id,
-          profiles (role, email)
-        `)
-        .in('shame_id', postIds)
-        .order('created_at', { ascending: true });
-
-      if (commentsError) {
-        console.error('Error fetching comments:', commentsError);
-      } else {
-        const grouped = {};
-        postIds.forEach(id => grouped[id] = []);
-        commentsData?.forEach(c => {
-          grouped[c.shame_id].push({
-            id: c.id,
-            text: c.comment_text,
-            userId: c.user_id,
-            role: c.profiles?.role || 'sub',
-            email: c.profiles?.email?.split('@')[0] || 'Anonymous',
-            date: new Date(c.created_at).toLocaleDateString()
-          });
-        });
-        
-        Object.keys(grouped).forEach(key => {
-          grouped[key].sort((a, b) => {
-            if (a.role === 'goddess' && b.role !== 'goddess') return -1;
-            if (b.role === 'goddess' && a.role !== 'goddess') return 1;
-            return 0;
-          });
-        });
-        
-        setComments(grouped);
-      }
-
-      // Fetch Likes
-      const { data: likesData, error: likesError } = await supabase
-        .from('wall_likes')
-        .select('image_id, user_id')
-        .in('image_id', postIds);
-
-      if (likesError) {
-        console.error('Error fetching likes:', likesError);
-      } else {
-        const likesMap = {};
-        postIds.forEach(id => likesMap[id] = { count: 0, userLiked: false });
-        likesData?.forEach(like => {
-          if (likesMap[like.image_id]) {
-            likesMap[like.image_id].count += 1;
-            if (user && like.user_id === user.id) {
-              likesMap[like.image_id].userLiked = true;
-            }
-          }
-        });
-        setLikes(likesMap);
-      }
-    }
-    setLoading(false);
   };
 
-  const processFiles = (files) => {
-    if (!files || files.length === 0) return;
-
-    const validFiles = [];
-    const validPreviews = [];
-    let hasError = false;
-
-    Array.from(files).forEach((file) => {
-      const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
-      const isMimeValid = ACCEPTED_MIME_TYPES.includes(file.type);
-      const isExtValid = ACCEPTED_EXTENSIONS.includes(fileExt);
-
-      if (!isMimeValid && !isExtValid) {
-        hasError = true;
-      } else {
-        validFiles.push(file);
-        
-        // Use URL.createObjectURL for synchronous preview generation
-        validPreviews.push({
-          url: URL.createObjectURL(file),
-          type: file.type.startsWith('video/') ? 'video' : 'image'
-        });
-      }
-    });
-
-    if (hasError) {
-      setErrorMsg('Some files were ignored. Only images and videos (.mp4, .webm, .mov) are allowed.');
-    } else {
-      setErrorMsg(null);
-    }
-
-    setPendingFiles(prev => [...prev, ...validFiles]);
-    setPendingPreviews(prev => [...prev, ...validPreviews]);
-  };
-
-  const handleDragOver = (e) => {
+  const handleAddEntry = async (e) => {
     e.preventDefault();
-    e.stopPropagation();
-    if (!isDragging) setIsDragging(true);
-  };
+    if (!caption.trim()) return;
 
-  const handleDragEnter = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
+    setIsSubmitting(true);
+    try {
+      await apiFetch('/api/wall-of-shame', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'create_post',
+          user_id: user ? user.id : null,
+          media_urls: mediaUrl.trim() ? [mediaUrl.trim()] : ['/images/athena-2.jpg'],
+          caption: caption.trim(),
+          tag: tag.trim() || 'Sinful Penance',
+        }),
+      });
 
-  const handleDragLeave = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.currentTarget.contains(e.relatedTarget)) return;
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    processFiles(e.dataTransfer?.files);
-  };
-
-  const handleFileChange = (e) => {
-    processFiles(e.target.files);
-  };
-
-  const handleBrowseClick = () => {
-    if (fileInputRef.current) fileInputRef.current.click();
-  };
-
-  const handleRemovePreview = (index) => {
-    setPendingFiles(prev => prev.filter((_, i) => i !== index));
-    setPendingPreviews(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleClearPending = () => {
-    setPendingFiles([]);
-    setPendingPreviews([]);
-    setCaption('');
-    setTag('Exposed');
-    setIsNsfw(false);
-    setErrorMsg(null);
-    setIsUploadOpen(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const handleAddToWall = async (e) => {
-    if (e) e.preventDefault();
-
-    if (pendingFiles.length === 0) {
-      setErrorMsg('Please select at least one image or video.');
-      return;
+      setCaption('');
+      setMediaUrl('');
+      setTag('Sinful Penance');
+      fetchBookOfJudgment();
+    } catch (err) {
+      alert(err.message || 'Error posting to Book of Judgment');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const finalCaption = caption.trim() || 'Anonymous Offender - Caught in the act';
-    const finalTag = tag.trim() || 'Exposed';
-    
-    // Upload all files to storage
-    const uploadedUrls = [];
-    
-    for (const file of pendingFiles) {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('shame_images')
-        .upload(fileName, file);
-        
-      if (uploadError) {
-        setErrorMsg('Failed to upload a file: ' + uploadError.message);
-        return;
-      }
-      
-      const { data: urlData } = supabase.storage
-        .from('shame_images')
-        .getPublicUrl(fileName);
-        
-      uploadedUrls.push(urlData.publicUrl);
-    }
-      
-    // Insert into DB
-    const { error: dbError } = await supabase
-      .from('wall_of_shame')
-      .insert([{ 
-        media_urls: uploadedUrls, 
-        caption: finalCaption, 
-        tag: finalTag,
-        is_nsfw: isNsfw
-      }]);
-      
-    if (dbError) {
-      setErrorMsg('Failed to save entry: ' + dbError.message);
-      return;
-    }
-    
-    handleClearPending();
-    fetchWallOfShame();
   };
 
-  const handleRemoveFromWall = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this offender?")) return;
-    const { error } = await supabase.from('wall_of_shame').delete().eq('id', id);
-    if (error) alert("Failed to delete: " + error.message);
-    else fetchWallOfShame();
+  const handleDeletePost = async (shameId) => {
+    if (!window.confirm("Purge this sinner from the Book of Judgment?")) return;
+    try {
+      await apiFetch('/api/wall-of-shame', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'delete_post', shame_id: shameId }),
+      });
+      fetchBookOfJudgment();
+    } catch (err) {
+      alert(err.message);
+    }
   };
-  
-  const handlePostComment = async (shameId) => {
+
+  const handleLikePost = async (shameId) => {
+    try {
+      await apiFetch('/api/wall-of-shame', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'like_post', shame_id: shameId }),
+      });
+      fetchBookOfJudgment();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleAddComment = async (shameId) => {
     const text = newComment[shameId]?.trim();
-    if (!text || !user) return;
-    
-    const { error } = await supabase
-      .from('shame_comments')
-      .insert([{ shame_id: shameId, user_id: user.id, comment_text: text }]);
-      
-    if (error) {
-      alert("Failed to post comment: " + error.message);
-    } else {
+    if (!text) return;
+
+    try {
+      await apiFetch('/api/wall-of-shame', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'add_comment',
+          shame_id: shameId,
+          user_id: user ? user.id : null,
+          username: username || (user ? user.email.split('@')[0] : 'Penitent'),
+          comment_text: text,
+        }),
+      });
+
       setNewComment({ ...newComment, [shameId]: '' });
-      fetchWallOfShame();
+      fetchBookOfJudgment();
+    } catch (err) {
+      alert(err.message);
     }
-  };
-
-  const handleToggleLike = async (shameId) => {
-    if (!user) {
-      alert("Please sign in to like this post.");
-      return;
-    }
-    
-    const isLiked = likes[shameId]?.userLiked;
-    
-    // Optimistic UI update
-    setLikes(prev => ({
-      ...prev,
-      [shameId]: {
-        count: (prev[shameId]?.count || 0) + (isLiked ? -1 : 1),
-        userLiked: !isLiked
-      }
-    }));
-    
-    if (isLiked) {
-      const { error } = await supabase
-        .from('wall_likes')
-        .delete()
-        .match({ image_id: shameId, user_id: user.id });
-      if (error) console.error("Error unliking:", error);
-    } else {
-      const { error } = await supabase
-        .from('wall_likes')
-        .insert([{ image_id: shameId, user_id: user.id }]);
-      if (error) console.error("Error liking:", error);
-    }
-  };
-
-  const toggleUnblur = (id) => {
-    setUnblurredItems(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const renderMedia = (urls, fallbackUrl, isNsfw, id) => {
-    // Determine active URLs (new array format or legacy fallback)
-    let activeUrls = [];
-    if (urls && urls.length > 0) activeUrls = urls;
-    else if (fallbackUrl) activeUrls = [fallbackUrl];
-    
-    if (activeUrls.length === 0) return null;
-
-    const isUnblurred = unblurredItems.has(id);
-    const mediaStyle = (isNsfw && !isUnblurred) ? { filter: 'blur(15px)', cursor: 'pointer' } : { cursor: 'pointer' };
-
-    if (activeUrls.length === 1) {
-      const url = activeUrls[0];
-      const isVideo = url.match(/\.(mp4|webm|mov)(\?.*)?$/i);
-      return isVideo ? (
-        <video src={url} controls={isUnblurred || !isNsfw} style={mediaStyle} onClick={() => toggleUnblur(id)} className="wall__card-media-item" />
-      ) : (
-        <img src={url} alt="Offender evidence" style={mediaStyle} onClick={() => toggleUnblur(id)} className="wall__card-media-item" loading="lazy" />
-      );
-    }
-
-    return (
-      <div className="wall__card-carousel">
-        {activeUrls.map((url, i) => {
-          const isVideo = url.match(/\.(mp4|webm|mov)(\?.*)?$/i);
-          return (
-            <div key={i} className="wall__card-carousel-slide">
-              {isVideo ? (
-                <video src={url} controls={isUnblurred || !isNsfw} style={mediaStyle} onClick={() => toggleUnblur(id)} className="wall__card-media-item" />
-              ) : (
-                <img src={url} alt={`Evidence ${i+1}`} style={mediaStyle} onClick={() => toggleUnblur(id)} className="wall__card-media-item" loading="lazy" />
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
   };
 
   return (
@@ -363,229 +113,121 @@ export default function WallOfShame() {
         <header className="page__header wall__header">
           <div className="wall__header-badge">
             <span className="wall__header-badge-dot" />
-            <span className="wall__header-badge-text">Public Disgrace Archive</span>
+            <span className="wall__header-badge-text">Holy Archive of Transgressions</span>
           </div>
-          <h1 className="page__title wall__title" id="wall-title">Wall of Shame</h1>
+          <h1 className="page__title wall__title" id="wall-title">Book of Judgment</h1>
           <p className="page__subtitle wall__subtitle" id="wall-subtitle">
-            The fallen. The failures. Displayed for all to see.
+            The fallen. The unfaithful. Inscribed eternally for divine judgment.
           </p>
         </header>
 
-        <div className="wall__controls-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <div className="wall__sort-control">
-            <label htmlFor="sortMode" style={{ color: 'var(--color-text-secondary)', marginRight: '10px', fontWeight: '600' }}>Sort by:</label>
-            <select 
-              id="sortMode" 
-              value={sortMode} 
-              onChange={(e) => setSortMode(e.target.value)}
-              style={{
-                padding: '8px 12px', borderRadius: 'var(--radius-full)', 
-                background: 'var(--color-bg-card)', color: 'var(--color-text-primary)',
-                border: '1px solid var(--color-border)', outline: 'none',
-                cursor: 'pointer', fontWeight: 'bold'
-              }}
-            >
-              <option value="newest">Newest First</option>
-              <option value="most_liked">Most Liked</option>
-            </select>
-          </div>
-        </div>
-
         {canEdit && (
-          <div className="wall__admin-controls">
-            {!isUploadOpen ? (
-              <button className="wall__add-btn" onClick={() => setIsUploadOpen(true)}>
-                + Add New Offender
-              </button>
-            ) : (
-              <section className="wall__upload-section wall__upload-section--open">
-                <div
-                  className={`upload-zone ${isDragging ? 'upload-zone--dragging' : ''}`}
-                  onDragOver={handleDragOver}
-                  onDragEnter={handleDragEnter}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  onClick={pendingPreviews.length === 0 ? handleBrowseClick : undefined}
-                >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    accept="image/*,video/*"
-                    onChange={handleFileChange}
-                    className="upload-zone__input"
-                    style={{ display: 'none' }}
-                  />
-
-                  {pendingPreviews.length === 0 ? (
-                    <div className="upload-zone__empty-state">
-                      <div className="upload-zone__icon-container">
-                        <span style={{fontSize: '2rem'}}>📸🎥</span>
-                      </div>
-                      <h3 className="upload-zone__headline">
-                        {isDragging ? 'Drop Photos/Videos Here' : 'Drag & Drop Photos and Videos'}
-                      </h3>
-                      <p className="upload-zone__description">
-                        Drop media here, or <span className="upload-zone__browse-btn">browse files</span>
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="upload-zone__active-state" onClick={(e) => e.stopPropagation()}>
-                      <div className="upload-zone__multi-preview">
-                        {pendingPreviews.map((p, i) => (
-                          <div key={i} className="upload-zone__thumb-frame-multi">
-                            {p.type === 'video' ? (
-                              <video src={p.url} className="upload-zone__thumb-img" />
-                            ) : (
-                              <img src={p.url} alt="Preview" className="upload-zone__thumb-img" />
-                            )}
-                            <button type="button" className="upload-zone__remove-thumb" onClick={() => handleRemovePreview(i)}>&times;</button>
-                          </div>
-                        ))}
-                        <button className="upload-zone__add-more" onClick={handleBrowseClick}>+</button>
-                      </div>
-
-                      <div className="upload-zone__form-col">
-                        <input
-                          type="text"
-                          className="upload-zone__caption-input"
-                          placeholder="Offender Name & Description..."
-                          value={caption}
-                          onChange={(e) => setCaption(e.target.value)}
-                          style={{marginBottom: '10px'}}
-                        />
-                        <input
-                          type="text"
-                          className="upload-zone__caption-input"
-                          placeholder="Tag (e.g., Exposed, Bankrupt)"
-                          value={tag}
-                          onChange={(e) => setTag(e.target.value)}
-                        />
-                        <div style={{ display: 'flex', alignItems: 'center', marginTop: '10px', gap: '8px' }}>
-                          <input 
-                            type="checkbox" 
-                            id="nsfw-checkbox" 
-                            checked={isNsfw} 
-                            onChange={(e) => setIsNsfw(e.target.checked)} 
-                            style={{ width: '16px', height: '16px' }}
-                          />
-                          <label htmlFor="nsfw-checkbox" style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>Mark as NSFW</label>
-                        </div>
-                        <div className="upload-zone__action-row" style={{marginTop: '15px'}}>
-                          <button type="button" className="upload-zone__submit-btn" onClick={handleAddToWall}>
-                            <span className="upload-zone__submit-text">Post Offender</span>
-                          </button>
-                          <button type="button" className="upload-zone__cancel-btn" onClick={handleClearPending}>
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {errorMsg && (
-                    <div className="upload-zone__error-banner"><span>⚠️ {errorMsg}</span></div>
-                  )}
-                </div>
-              </section>
-            )}
-          </div>
+          <form onSubmit={handleAddEntry} style={{ background: 'var(--color-bg-card)', padding: '1.5rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-gold)', marginBottom: '3rem', maxWidth: '600px', margin: '0 auto 3rem' }}>
+            <h3 style={{ color: 'var(--color-gold)', marginBottom: '1rem', fontFamily: 'var(--font-heading)' }}>Inscribe Sinner in Book of Judgment</h3>
+            <input
+              type="text"
+              placeholder="Sinner Name & Transgression Description..."
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              className="wishlist__tribute-input"
+              style={{ marginBottom: '1rem', width: '100%' }}
+              required
+            />
+            <input
+              type="text"
+              placeholder="Image URL (optional, defaults to Athena shrine)"
+              value={mediaUrl}
+              onChange={(e) => setMediaUrl(e.target.value)}
+              className="wishlist__tribute-input"
+              style={{ marginBottom: '1rem', width: '100%' }}
+            />
+            <input
+              type="text"
+              placeholder="Tag (e.g. Broken Vow, Insufficient Devotion)"
+              value={tag}
+              onChange={(e) => setTag(e.target.value)}
+              className="wishlist__tribute-input"
+              style={{ marginBottom: '1rem', width: '100%' }}
+            />
+            <button type="submit" className="wishlist__tribute-btn" disabled={isSubmitting} style={{ width: '100%' }}>
+              {isSubmitting ? 'Inscribing...' : 'Inscribe in Book of Judgment'}
+            </button>
+          </form>
         )}
 
         <section className="wall__gallery-section">
           {loading ? (
-            <p style={{textAlign: 'center', color: 'var(--color-text-secondary)'}}>Loading offenders...</p>
-          ) : images.length === 0 ? (
-            <p style={{textAlign: 'center', color: 'var(--color-text-secondary)'}}>No offenders found yet. The wall is clean.</p>
+            <p style={{ textAlign: 'center', color: 'var(--color-gold)' }}>Consulting the Book of Judgment...</p>
+          ) : posts.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem', background: 'var(--color-bg-card)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--color-border)' }}>
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: '1.2rem' }}>No transgressions currently recorded in the Book of Judgment.</p>
+            </div>
           ) : (
             <div className="wall__gallery" id="wall-gallery">
-              {[...images].sort((a, b) => {
-                if (sortMode === 'most_liked') {
-                  const likesA = likes[a.id]?.count || 0;
-                  const likesB = likes[b.id]?.count || 0;
-                  return likesB - likesA;
-                }
-                return 0; // Already sorted by date from DB
-              }).map((item) => (
+              {posts.map((item) => (
                 <article key={item.id} className="wall__card premium-frame">
                   <div className="wall__card-media-container" style={{ position: 'relative' }}>
-                    {renderMedia(item.media_urls, item.image_url, item.is_nsfw, item.id)}
-                    {item.is_nsfw && !unblurredItems.has(item.id) && (
-                      <div className="wall__nsfw-overlay" onClick={() => toggleUnblur(item.id)} style={{
-                        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: 'rgba(0,0,0,0.3)', color: '#fff', fontWeight: 'bold',
-                        cursor: 'pointer', zIndex: 5, pointerEvents: 'none'
-                      }}>
-                        NSFW - Click to view
-                      </div>
-                    )}
-                    <span className="wall__card-badge wall__card-badge--exposed">
-                      {item.tag || 'Exposed'}
+                    <img
+                      src={item.media_urls?.[0] || '/images/athena-2.jpg'}
+                      alt="Transgression Evidence"
+                      className="wall__card-media-item"
+                      loading="lazy"
+                    />
+                    <span className="wall__card-badge wall__card-badge--exposed" style={{ background: 'var(--color-accent)', color: 'white', position: 'absolute', top: '10px', left: '10px', padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: '0.75rem' }}>
+                      {item.tag || 'Sinful Penance'}
                     </span>
                     {canEdit && (
-                      <button className="wall__card-delete" onClick={() => handleRemoveFromWall(item.id)}>×</button>
+                      <button className="wall__card-delete" onClick={() => handleDeletePost(item.id)}>×</button>
                     )}
                   </div>
-                  
-                  <div className="wall__card-body">
-                    <p className="wall__card-caption">{item.caption}</p>
-                    <div className="wall__card-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '15px' }}>
-                      <span className="wall__card-timestamp" style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-                        {new Date(item.created_at).toLocaleDateString()}
+
+                  <div className="wall__card-body" style={{ padding: '1rem' }}>
+                    <p className="wall__card-caption" style={{ fontFamily: 'var(--font-heading)', fontSize: '1.1rem', color: 'var(--color-text-primary)' }}>{item.caption}</p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                        Inscribed: {new Date(item.created_at).toLocaleDateString()}
                       </span>
-                      <button 
-                        className={`wall__like-btn ${likes[item.id]?.userLiked ? 'liked' : ''}`}
-                        onClick={() => handleToggleLike(item.id)}
-                        style={{
-                          background: 'none', border: 'none', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', gap: '5px',
-                          color: likes[item.id]?.userLiked ? 'var(--color-gold)' : 'var(--color-text-muted)',
-                          fontWeight: 'bold', fontSize: '1rem', transition: 'transform 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                      <button
+                        onClick={() => handleLikePost(item.id)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-gold)', fontWeight: 'bold' }}
                       >
-                        {likes[item.id]?.userLiked ? '❤️' : '🤍'} {likes[item.id]?.count || 0}
+                        ❤️ {item.likes_count || 0}
                       </button>
                     </div>
                   </div>
-                  
-                  <div className="wall__comments-section">
-                    <div className="wall__comments-list">
-                      {comments[item.id]?.length > 0 ? (
-                        comments[item.id].map(c => (
-                          <div key={c.id} className={`wall__comment ${c.role === 'goddess' ? 'wall__comment--goddess' : ''}`}>
-                            <div className="wall__comment-header">
-                              <span className="wall__comment-author">
-                                {c.role === 'goddess' ? '👑 Goddess' : c.email}
-                              </span>
-                              <span className="wall__comment-date">{c.date}</span>
-                            </div>
-                            <p className="wall__comment-text">{c.text}</p>
+
+                  {/* Comments Section */}
+                  <div className="wall__comments-section" style={{ borderTop: '1px solid var(--color-border)', padding: '1rem' }}>
+                    <div className="wall__comments-list" style={{ maxHeight: '180px', overflowY: 'auto', marginBottom: '1rem' }}>
+                      {item.comments && item.comments.length > 0 ? (
+                        item.comments.map((c) => (
+                          <div key={c.id} style={{ padding: '6px 10px', background: 'rgba(0,0,0,0.4)', borderRadius: '6px', marginBottom: '6px' }}>
+                            <span style={{ color: 'var(--color-gold)', fontWeight: 'bold', fontSize: '0.85rem' }}>@{c.username}: </span>
+                            <span style={{ color: 'var(--color-text-primary)', fontSize: '0.85rem' }}>{c.comment_text}</span>
                           </div>
                         ))
                       ) : (
-                        <p className="wall__comment-empty">No comments yet. Roast them!</p>
+                        <p style={{ fontStyle: 'italic', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>No penitent comments yet.</p>
                       )}
                     </div>
-                    
+
                     {user ? (
-                      <div className="wall__comment-input-row">
+                      <div style={{ display: 'flex', gap: '8px' }}>
                         <input
                           type="text"
-                          placeholder="Laugh at them..."
-                          className="wall__comment-input"
+                          placeholder="Write comment..."
+                          className="wishlist__tribute-input"
+                          style={{ padding: '6px 12px', fontSize: '0.85rem' }}
                           value={newComment[item.id] || ''}
-                          onChange={(e) => setNewComment({...newComment, [item.id]: e.target.value})}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handlePostComment(item.id);
-                          }}
+                          onChange={(e) => setNewComment({ ...newComment, [item.id]: e.target.value })}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleAddComment(item.id); }}
                         />
-                        <button className="wall__comment-btn" onClick={() => handlePostComment(item.id)}>Post</button>
+                        <button className="wishlist__tribute-btn" style={{ padding: '6px 14px', fontSize: '0.8rem' }} onClick={() => handleAddComment(item.id)}>
+                          Post
+                        </button>
                       </div>
                     ) : (
-                      <p className="wall__comment-empty" style={{textAlign:'center', marginTop: '10px'}}>Sign in to comment.</p>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Authenticate to post comments.</p>
                     )}
                   </div>
                 </article>

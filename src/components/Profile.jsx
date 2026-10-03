@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../supabaseClient';
+import { apiFetch } from '../utils/api';
 import './Profile.css';
 
 export default function Profile() {
@@ -11,42 +11,24 @@ export default function Profile() {
   
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [newUsername, setNewUsername] = useState('');
+  const [newAvatarUrlInput, setNewAvatarUrlInput] = useState('');
+  const [isEditingAvatar, setIsEditingAvatar] = useState(false);
   const [saveStatus, setSaveStatus] = useState({ message: '', type: '' });
 
   useEffect(() => {
     if (user) {
       setNewUsername(username || '');
+      setNewAvatarUrlInput(avatarUrl || '');
       fetchProfileData(user.id);
     }
-  }, [user, username]);
+  }, [user, username, avatarUrl]);
 
   const fetchProfileData = async (userId) => {
     setLoading(true);
     try {
-      // Fetch Total Points via our RPC function
-      const { data: pointsData, error: pointsError } = await supabase
-        .rpc('get_user_points', { user_uuid: userId });
-        
-      if (!pointsError && pointsData !== null) {
-        setPoints(pointsData);
-      }
-
-      // Fetch User Badges
-      const { data: badgesData, error: badgesError } = await supabase
-        .from('user_badges')
-        .select(`
-          badges (
-            id,
-            title,
-            description,
-            icon
-          )
-        `)
-        .eq('user_id', userId);
-
-      if (!badgesError && badgesData) {
-        setBadges(badgesData.map(b => b.badges));
-      }
+      const data = await apiFetch(`/api/profile?user_id=${userId}`);
+      setPoints(data.points || 0);
+      setBadges(data.badges || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -54,100 +36,30 @@ export default function Profile() {
     }
   };
 
-    const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-
-  const handleAvatarUpload = async (event) => {
-    try {
-      setIsUploadingAvatar(true);
-      setSaveStatus({ message: 'Uploading avatar...', type: 'info' });
-      
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}-${Math.random()}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
-
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-
-      const newAvatarUrl = urlData.publicUrl;
-
-      // Update profile record
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: newAvatarUrl })
-        .eq('id', user.id);
-
-      if (updateError) throw updateError;
-
-      setAvatarUrl(newAvatarUrl);
-      setSaveStatus({ message: 'Avatar updated successfully!', type: 'success' });
-      setTimeout(() => setSaveStatus({ message: '', type: '' }), 3000);
-    } catch (error) {
-      console.error('Avatar upload error:', error);
-      setSaveStatus({ message: `Error: ${error.message || 'Error uploading avatar'}`, type: 'error' });
-    } finally {
-      setIsUploadingAvatar(false);
-    }
-  };
-
-  const handleRemoveAvatar = async () => {
-    try {
-      if (!avatarUrl) return;
-      setIsUploadingAvatar(true);
-      setSaveStatus({ message: 'Removing avatar...', type: 'info' });
-      
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: null })
-        .eq('id', user.id);
-
-      if (updateError) throw updateError;
-
-      setAvatarUrl(null);
-      setSaveStatus({ message: 'Avatar removed successfully!', type: 'success' });
-      setTimeout(() => setSaveStatus({ message: '', type: '' }), 3000);
-    } catch (error) {
-      console.error(error);
-      setSaveStatus({ message: 'Error removing avatar.', type: 'error' });
-    } finally {
-      setIsUploadingAvatar(false);
-    }
-  };
-
-  const handleUpdateUsername = async (e) => {
+  const handleUpdateProfile = async (e) => {
     e.preventDefault();
-    if (!newUsername.trim()) return;
-    
-    setSaveStatus({ message: 'Saving...', type: 'info' });
+    setSaveStatus({ message: 'Saving sacred profile...', type: 'info' });
     
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({ id: user.id, username: newUsername.trim() }, { onConflict: 'id' });
+      const data = await apiFetch('/api/profile', {
+        method: 'POST',
+        body: JSON.stringify({
+          user_id: user.id,
+          username: newUsername.trim(),
+          avatar_url: newAvatarUrlInput.trim() || null,
+        }),
+      });
 
-      if (error) {
-        console.error('Username update error:', error);
-        setSaveStatus({ message: `Error: ${error.message || 'Unknown error'}`, type: 'error' });
-      } else {
-        setUsername(newUsername.trim());
+      if (data.success) {
+        setUsername(data.user.username);
+        setAvatarUrl(data.user.avatar_url);
         setIsEditingUsername(false);
-        setSaveStatus({ message: 'Username updated successfully!', type: 'success' });
+        setIsEditingAvatar(false);
+        setSaveStatus({ message: 'Sacred profile updated successfully!', type: 'success' });
         setTimeout(() => setSaveStatus({ message: '', type: '' }), 3000);
       }
     } catch (err) {
-      console.error(err);
-      setSaveStatus({ message: 'Unexpected error.', type: 'error' });
+      setSaveStatus({ message: err.message || 'Error updating profile.', type: 'error' });
     }
   };
 
@@ -155,7 +67,7 @@ export default function Profile() {
     return (
       <div className="page profile-page">
         <div className="profile-auth-warning">
-          Please log in to view your profile.
+          Please authenticate before entering the shrine.
         </div>
       </div>
     );
@@ -164,59 +76,61 @@ export default function Profile() {
   return (
     <div className="page profile-page">
       <header className="page__header">
-        <h1 className="page__title">Your Profile</h1>
-        <p className="page__subtitle">Manage your identity and showcase your loyalty.</p>
+        <h1 className="page__title">Sacred Profile</h1>
+        <p className="page__subtitle">Manage your identity and showcase your marks of devotion.</p>
       </header>
 
       <div className="profile-content">
         {/* Profile Card */}
         <div className="profile-card">
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-            <div className="profile-avatar-large" style={{ position: 'relative', cursor: 'pointer' }} onClick={() => document.getElementById('avatar-upload').click()}>
+            <div className="profile-avatar-large" style={{ position: 'relative' }}>
               {avatarUrl ? (
                 <img src={avatarUrl} alt="Avatar" className="profile-avatar-img" />
               ) : (
-                role === 'goddess' ? '👑' : role === 'developer' ? '💻' : '👤'
+                role === 'goddess' ? '👑' : role === 'developer' ? '💻' : '🕯️'
               )}
-              <input 
-                type="file" 
-                id="avatar-upload" 
-                accept="image/*" 
-                style={{ display: 'none' }} 
-                onChange={handleAvatarUpload} 
-                disabled={isUploadingAvatar}
-              />
-              {isUploadingAvatar && <div className="profile-avatar-loading">⏳</div>}
             </div>
-            {avatarUrl && (
-              <button 
-                onClick={handleRemoveAvatar}
-                disabled={isUploadingAvatar}
-                style={{
-                  background: 'transparent',
-                  border: '1px solid var(--color-accent)',
-                  color: 'var(--color-accent)',
-                  padding: '4px 12px',
-                  borderRadius: 'var(--radius-full)',
-                  fontSize: '0.8rem',
-                  cursor: 'pointer'
-                }}
-              >
-                Remove Pic
-              </button>
-            )}
+            <button
+              onClick={() => setIsEditingAvatar(!isEditingAvatar)}
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--color-gold)',
+                color: 'var(--color-gold)',
+                padding: '4px 12px',
+                borderRadius: 'var(--radius-full)',
+                fontSize: '0.8rem',
+                cursor: 'pointer'
+              }}
+            >
+              {isEditingAvatar ? 'Cancel' : 'Change Avatar'}
+            </button>
           </div>
           
           <div className="profile-info">
+            {isEditingAvatar && (
+              <form onSubmit={handleUpdateProfile} style={{ marginBottom: '1rem', display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  value={newAvatarUrlInput}
+                  onChange={(e) => setNewAvatarUrlInput(e.target.value)}
+                  className="profile-username-input"
+                  placeholder="Paste image URL for avatar..."
+                  style={{ width: '100%' }}
+                />
+                <button type="submit" className="profile-btn-save">Save</button>
+              </form>
+            )}
+
             {isEditingUsername ? (
-              <form className="profile-username-form" onSubmit={handleUpdateUsername}>
+              <form className="profile-username-form" onSubmit={handleUpdateProfile}>
                 <input
                   type="text"
                   value={newUsername}
                   onChange={(e) => setNewUsername(e.target.value)}
                   className="profile-username-input"
                   placeholder="Enter new username"
-                  maxLength={20}
+                  maxLength={25}
                   autoFocus
                 />
                 <button type="submit" className="profile-btn-save">Save</button>
@@ -224,7 +138,7 @@ export default function Profile() {
               </form>
             ) : (
               <div className="profile-username-display">
-                <h2 className="profile-username">@{username || 'Set_Username'}</h2>
+                <h2 className="profile-username">@{username || 'Devoted_Penitent'}</h2>
                 <button className="profile-edit-icon" onClick={() => setIsEditingUsername(true)} title="Edit Username">
                   ✏️
                 </button>
@@ -239,13 +153,13 @@ export default function Profile() {
 
             <div className="profile-stats">
               <div className="profile-stat">
-                <span className="profile-stat-label">Role</span>
+                <span className="profile-stat-label">Sacred Rank</span>
                 <span className={`profile-stat-value role-badge role-badge--${role}`}>
-                  {role || 'Unknown'}
+                  {role === 'goddess' ? 'High Goddess Athena' : role === 'developer' ? 'High Priest' : 'Penitent Sub'}
                 </span>
               </div>
               <div className="profile-stat">
-                <span className="profile-stat-label">Total Points</span>
+                <span className="profile-stat-label">Sacred Points</span>
                 <span className="profile-stat-value points-highlight">
                   {loading ? '...' : points}
                 </span>
@@ -256,13 +170,13 @@ export default function Profile() {
 
         {/* Badges Showcase */}
         <div className="profile-section">
-          <h3 className="profile-section-title">Your Badges Showcase</h3>
+          <h3 className="profile-section-title">Your Consecrated Relics</h3>
           {loading ? (
-            <p className="profile-loading">Loading your collection...</p>
+            <p className="profile-loading">Inspecting your relics...</p>
           ) : badges.length === 0 ? (
             <div className="profile-empty-state">
-              <p>You haven't redeemed any badges yet.</p>
-              <p className="profile-empty-sub">Complete free tasks and visit the Redemption Store to earn them!</p>
+              <p>You haven't claimed any sacred relics yet.</p>
+              <p className="profile-empty-sub">Perform daily devotions and visit the Reliquary to claim them!</p>
             </div>
           ) : (
             <div className="profile-badges-grid">

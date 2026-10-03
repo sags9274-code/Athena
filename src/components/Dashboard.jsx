@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { apiFetch } from '../utils/api';
 
 export default function Dashboard() {
   const { role, user } = useAuth();
@@ -29,74 +29,14 @@ export default function Dashboard() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // Fetch Subs
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('role', 'sub')
-        .order('created_at', { ascending: false });
-
-      // Fetch Tasks Completions
-      const { data: completionsData } = await supabase
-        .from('task_completions')
-        .select('user_id, tasks(points)');
-        
-      // Fetch Redemptions
-      const { data: redemptionsData } = await supabase
-        .from('redemptions')
-        .select('user_id, cost');
-
-      // Fetch Wall of Shame count
-      const { count: shameCount } = await supabase
-        .from('wall_of_shame')
-        .select('*', { count: 'exact', head: true });
-
-      // Aggregate data
-      const subsMap = {};
-      const profiles = profilesData || [];
-      
-      profiles.forEach(p => {
-        subsMap[p.id] = {
-          id: p.id,
-          username: p.username || 'No Username',
-          email: p.email || '',
-          joined: new Date(p.created_at).toLocaleDateString(),
-          earned: 0,
-          spent: 0,
-          tasksCompleted: 0
-        };
-      });
-
-      if (completionsData) {
-        completionsData.forEach(c => {
-          if (subsMap[c.user_id]) {
-            subsMap[c.user_id].earned += (c.tasks?.points || 0);
-            subsMap[c.user_id].tasksCompleted += 1;
-          }
-        });
-      }
-
-      if (redemptionsData) {
-        redemptionsData.forEach(r => {
-          if (subsMap[r.user_id]) {
-            subsMap[r.user_id].spent += (r.cost || 0);
-          }
-        });
-      }
-      
-      const subsArray = Object.values(subsMap);
-
-      setStats({
-        totalSubs: profiles.length,
-        totalTasksCompleted: completionsData ? completionsData.length : 0,
-        totalShamePosts: shameCount || 0
-      });
-      
-      setSubs(subsArray);
+      const data = await apiFetch('/api/dashboard');
+      setStats(data.stats || { totalSubs: 0, totalTasksCompleted: 0, totalShamePosts: 0 });
+      setSubs(data.subs || []);
     } catch (err) {
       console.error("Dashboard error:", err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const filteredSubs = subs.filter(sub => 
@@ -110,26 +50,26 @@ export default function Dashboard() {
   return (
     <div className="page dashboard-page" style={{ paddingTop: '100px', minHeight: '100vh', paddingLeft: '20px', paddingRight: '20px', paddingBottom: '40px', maxWidth: '1200px', margin: '0 auto' }}>
       <header className="page__header" style={{ textAlign: 'center', marginBottom: '3rem' }}>
-        <h1 className="page__title" style={{ color: 'var(--color-gold)' }}>Admin Dashboard</h1>
-        <p className="page__subtitle">Track your subjects' loyalty and performance.</p>
+        <h1 className="page__title" style={{ color: 'var(--color-gold)' }}>The Holy Sanctum</h1>
+        <p className="page__subtitle">High Priestess &amp; Admin Dashboard — Oversee all subjects and devotions.</p>
       </header>
 
       {loading ? (
-        <p style={{ textAlign: 'center', color: 'var(--color-gold)' }}>Loading empire data...</p>
+        <p style={{ textAlign: 'center', color: 'var(--color-gold)' }}>Opening the Holy Sanctum...</p>
       ) : (
         <>
           {/* Top Stats */}
-          <div className="dashboard-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '3rem' }}>
+          <div className="dashboard-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
             <div className="dashboard-stat-card">
-              <h3>Total Subs</h3>
+              <h3>Bound Penitents</h3>
               <p className="dashboard-stat-value">{stats.totalSubs}</p>
             </div>
             <div className="dashboard-stat-card">
-              <h3>Tasks Completed</h3>
+              <h3>Rites Performed</h3>
               <p className="dashboard-stat-value">{stats.totalTasksCompleted}</p>
             </div>
             <div className="dashboard-stat-card">
-              <h3>Wall of Shame Posts</h3>
+              <h3>Book of Judgment Entries</h3>
               <p className="dashboard-stat-value">{stats.totalShamePosts}</p>
             </div>
           </div>
@@ -137,7 +77,7 @@ export default function Dashboard() {
           {/* Subs Roster */}
           <div className="dashboard-table-container">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-              <h2 style={{ color: 'var(--color-gold)', margin: 0 }}>Sub Roster</h2>
+              <h2 style={{ color: 'var(--color-gold)', margin: 0, fontFamily: 'var(--font-heading)', fontSize: '1.8rem' }}>Penitents Roster</h2>
               <input 
                 type="text" 
                 placeholder="Search by username or ID..." 
@@ -152,12 +92,12 @@ export default function Dashboard() {
               <table className="dashboard-table">
                 <thead>
                   <tr>
-                    <th>Sub ID / User</th>
-                    <th>Joined Date</th>
-                    <th>Tasks Completed</th>
+                    <th>Penitent User / ID</th>
+                    <th>Pledged Date</th>
+                    <th>Rites Performed</th>
                     <th>Points Earned</th>
-                    <th>Points Spent</th>
-                    <th>Available Balance</th>
+                    <th>Points Redeemed</th>
+                    <th>Sacred Balance</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -165,9 +105,9 @@ export default function Dashboard() {
                     filteredSubs.map(sub => (
                       <tr key={sub.id}>
                         <td data-label="Sub">
-                          <div style={{ fontWeight: 'bold', color: 'var(--color-text-primary)' }}>{sub.username}</div>
+                          <div style={{ fontWeight: 'bold', color: 'var(--color-text-primary)' }}>@{sub.username}</div>
                           {sub.email && <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{sub.email}</div>}
-                          <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{sub.id.substring(0, 8)}...</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{sub.id}</div>
                         </td>
                         <td data-label="Joined">{sub.joined}</td>
                         <td data-label="Tasks">{sub.tasksCompleted}</td>
@@ -179,7 +119,7 @@ export default function Dashboard() {
                   ) : (
                     <tr>
                       <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
-                        No subs found.
+                        No penitents found.
                       </td>
                     </tr>
                   )}

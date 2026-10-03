@@ -1,8 +1,5 @@
-import { useState } from 'react';
-import angelHero from '../assets/angel-hero.jpeg';
-import angelProfile from '../assets/angel-profile.jpeg';
 import ProfileCard from './ProfileCard';
-import { handleCheckout } from '../utils/checkout';
+import { handleCheckout, THRONE_PAYMENT_URL } from '../utils/checkout';
 
 export default function Hero() {
   return (
@@ -10,8 +7,8 @@ export default function Hero() {
       {/* Background */}
       <div className="hero__bg">
         <img
-          src={angelHero}
-          alt=""
+          src="/images/athena-3.jpg"
+          alt="Goddess Athena Cathedral Shrine"
           className="hero__bg-image"
           loading="eager"
         />
@@ -26,46 +23,46 @@ export default function Hero() {
           {/* Verified Badge */}
           <div className="hero__badge" id="hero-badge">
             <span className="hero__badge-dot" />
-            <span className="hero__badge-text">Verified Creator & Tastemaker</span>
+            <span className="hero__badge-text">Holy Church of Goddess Athena</span>
             <span className="hero__badge-check">✦</span>
           </div>
 
           {/* Main Heading */}
           <div className="hero__heading">
-            <h1 className="hero__heading-line1">Hi I&apos;m Angel.</h1>
-            <p className="hero__heading-line2">I&apos;ll ruin you loser.</p>
+            <h1 className="hero__heading-line1">Kneel Before</h1>
+            <p className="hero__heading-line2">Goddess Athena.</p>
           </div>
 
           {/* Subtext */}
           <p className="hero__subtext">
-            You&apos;ll be edged, ruined and be left aching for more.
+            Enter the sacred shrine. Bow your head, offer your devotions, and surrender all to Her divine glory.
           </p>
 
           {/* CTA Buttons */}
           <div className="hero__ctas">
-            <button className="hero__cta-primary" id="cta-vip" onClick={() => handleCheckout('VIP Tier Submission', 200)}>
+            <button className="hero__cta-primary" id="cta-vip" onClick={() => handleCheckout('Altar Covenant Submission', 200)}>
               <span className="hero__cta-icon">✦</span>
-              Submit to My VIP Tier
+              Pledge to Her Holy Altar
             </button>
-            <button className="hero__cta-secondary" id="cta-tribute" onClick={() => handleCheckout('Immediate Tribute', 50)}>
-              <span className="hero__cta-icon">🎁</span>
-              Offer Immediate Tribute
+            <button className="hero__cta-secondary" id="cta-tribute" onClick={() => handleCheckout('Immediate Offering', 50)}>
+              <span className="hero__cta-icon">🕯️</span>
+              Offer Sacred Tribute
             </button>
           </div>
 
           {/* Stats */}
           <div className="hero__stats">
             <div className="hero__stat">
-              <span className="hero__stat-value">Total Devotion</span>
-              <span className="hero__stat-label">Surrender Now</span>
+              <span className="hero__stat-value">Divine Wrath</span>
+              <span className="hero__stat-label">Absolute Power</span>
             </div>
             <div className="hero__stat">
-              <span className="hero__stat-value">&lt; 5m</span>
-              <span className="hero__stat-label">Brutal Responses</span>
+              <span className="hero__stat-value">Holy Altar</span>
+              <span className="hero__stat-label">Sacred Devotion</span>
             </div>
             <div className="hero__stat">
-              <span className="hero__stat-value">Elite Tier</span>
-              <span className="hero__stat-label">Premium Goddess</span>
+              <span className="hero__stat-value">High Priestess</span>
+              <span className="hero__stat-label">Eternal Goddess</span>
             </div>
           </div>
         </div>

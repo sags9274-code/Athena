@@ -8,6 +8,7 @@ export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,27 +27,11 @@ export default function Login() {
         await login(email, password);
         navigate('/');
       } else {
-        const data = await signup(email, password);
-        if (data?.session) {
-          navigate('/');
-        } else {
-          setSuccessMsg('Your spirit is recognized, but you must confirm your email before entering the domain.');
-          setIsLogin(true); // Switch to login view
-        }
+        await signup(email, password, username);
+        navigate('/');
       }
     } catch (error) {
-      let msg = error.message;
-      if (msg.includes('For security purposes, you can only request this after')) {
-        const seconds = msg.match(/after (\d+) seconds/)?.[1] || 'a few';
-        msg = `The heavens demand patience. Please wait ${seconds} seconds before trying again.`;
-      } else if (msg.includes('Invalid login credentials')) {
-        msg = 'Your devotion was not recognized. Invalid credentials.';
-      } else if (msg.includes('User already registered')) {
-        msg = 'This spirit is already bound. Please log in.';
-      } else if (msg.includes('Email not confirmed')) {
-        msg = 'Your spirit is unrecognized. You must confirm your email before entering.';
-      }
-      setErrorMsg(msg);
+      setErrorMsg(error.message || 'Authentication error. Please check your devotion credentials.');
     } finally {
       setLoading(false);
     }
@@ -56,11 +41,11 @@ export default function Login() {
     <div className="page login-page">
       <div className="login-container">
         <header className="login-header">
-          <h1 className="login-title">{isLogin ? 'Enter' : 'Submit'}</h1>
+          <h1 className="login-title">{isLogin ? 'Kneel' : 'Pledge'}</h1>
           <p className="login-subtitle">
             {isLogin
-              ? 'Prove your devotion. Authenticate.'
-              : 'Pledge your allegiance. Register.'}
+              ? 'Prove your devotion before Goddess Athena.'
+              : 'Pledge your eternal soul to the Church of Athena.'}
           </p>
         </header>
 
@@ -78,9 +63,26 @@ export default function Login() {
             </div>
           )}
           
+          {!isLogin && (
+            <div className="login-field">
+              <label className="login-label" htmlFor="username">
+                Penitent Username
+              </label>
+              <input
+                type="text"
+                id="username"
+                className="login-input"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="e.g. Devoted_Penitent"
+                required
+              />
+            </div>
+          )}
+
           <div className="login-field">
             <label className="login-label" htmlFor="email">
-              Email
+              Sacred Email
             </label>
             <input
               type="email"
@@ -88,14 +90,14 @@ export default function Login() {
               className="login-input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="your.email@example.com"
+              placeholder="penitent@churchofathena.org"
               required
             />
           </div>
 
           <div className="login-field">
             <label className="login-label" htmlFor="password">
-              Password
+              Secret Devotion Key (Password)
             </label>
             <input
               type="password"
@@ -113,20 +115,20 @@ export default function Login() {
             className="login-submit-btn"
             disabled={loading}
           >
-            {loading ? 'Processing...' : isLogin ? 'Authenticate' : 'Pledge'}
+            {loading ? 'Consulting Altar...' : isLogin ? 'Kneel & Authenticate' : 'Pledge Eternal Oath'}
           </button>
         </form>
 
         <div className="login-toggle">
           <span className="login-toggle-text">
-            {isLogin ? "Not bound yet?" : "Already bound?"}
+            {isLogin ? "Unbound soul?" : "Already bound to Athena?"}
           </span>
           <button
             type="button"
             className="login-toggle-btn"
             onClick={() => setIsLogin(!isLogin)}
           >
-            {isLogin ? 'Register now' : 'Log in instead'}
+            {isLogin ? 'Pledge now' : 'Authenticate instead'}
           </button>
         </div>
       </div>

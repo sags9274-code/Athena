@@ -3,12 +3,12 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const NAV_LINKS = [
-  { label: 'About', to: '/' },
-  { label: 'Contracts', to: '/contracts' },
-  { label: 'Wishlist & Gifting', to: '/wishlist' },
-  { label: 'Wall of Shame', to: '/wall-of-shame' },
-  { label: 'Free Tasks', to: '/free-tasks' },
-  { label: 'Redemption Store', to: '/store' },
+  { label: 'The Altar', to: '/' },
+  { label: 'Sacred Covenants', to: '/contracts' },
+  { label: 'Sacred Offerings', to: '/wishlist' },
+  { label: 'Book of Judgment', to: '/wall-of-shame' },
+  { label: 'Daily Devotions', to: '/free-tasks' },
+  { label: 'The Reliquary', to: '/store' },
 ];
 
 export default function Navbar() {
@@ -36,7 +36,6 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Close mobile menu on route change
   useEffect(() => {
     setMobileOpen(false);
     window.scrollTo(0, 0);
@@ -48,10 +47,10 @@ export default function Navbar() {
         {/* Logo */}
         <Link to="/" className="navbar__logo">
           <div className="navbar__logo-icon">
-            <div className="navbar__logo-diamond" />
-            <span className="navbar__logo-text">Goddess</span>
+            <span style={{ fontSize: '1.4rem', color: 'var(--color-gold)' }}>✝</span>
+            <span className="navbar__logo-text">Church of Athena</span>
           </div>
-          <span className="navbar__logo-subtitle">Angel&apos;s Domain</span>
+          <span className="navbar__logo-subtitle">Divine Wisdom & Power</span>
         </Link>
 
         {/* Desktop Links */}
@@ -76,7 +75,7 @@ export default function Navbar() {
               }
               style={{ color: 'var(--color-gold)', fontWeight: 'bold' }}
             >
-              Dashboard
+              The Sanctum
             </NavLink>
           )}
         </div>
@@ -84,19 +83,19 @@ export default function Navbar() {
         {/* Actions */}
         <div className="navbar__actions">
           <button className="navbar__cta" id="nav-vip-btn" onClick={handleAuthAction}>
-            {user ? 'Log Out' : 'Authenticate'}
+            {user ? 'Depart Shrine' : 'Kneel & Authenticate'}
           </button>
           {user ? (
-            <Link to="/profile" className="navbar__avatar" id="nav-avatar" title="View Profile" style={{ overflow: 'hidden' }}>
+            <Link to="/profile" className="navbar__avatar" id="nav-avatar" title="View Sacred Profile" style={{ overflow: 'hidden' }}>
               {avatarUrl ? (
                 <img src={avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
-                <span style={{ fontSize: '1rem' }}>{role === 'goddess' ? '👑' : role === 'developer' ? '💻' : '👤'}</span>
+                <span style={{ fontSize: '1rem' }}>{role === 'goddess' ? '👑' : role === 'developer' ? '💻' : '🕯️'}</span>
               )}
             </Link>
           ) : (
             <div className="navbar__avatar" id="nav-avatar">
-              <span style={{ fontSize: '1rem' }}>👑</span>
+              <span style={{ fontSize: '1rem' }}>🕯️</span>
             </div>
           )}
 
@@ -129,8 +128,18 @@ export default function Navbar() {
             {link.label}
           </NavLink>
         ))}
+        {isGoddessOrDev && (
+          <NavLink
+            to="/dashboard"
+            className="navbar__mobile-link"
+            style={{ color: 'var(--color-gold)' }}
+            onClick={() => setMobileOpen(false)}
+          >
+            The Sanctum
+          </NavLink>
+        )}
         <button className="navbar__cta" style={{ marginTop: '1rem' }} onClick={handleAuthAction}>
-          {user ? 'Log Out' : 'Authenticate'}
+          {user ? 'Depart Shrine' : 'Kneel & Authenticate'}
         </button>
       </div>
     </>

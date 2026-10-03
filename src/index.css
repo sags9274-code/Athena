@@ -1,4 +1,4 @@
-/* ===== CSS RESET & GLOBAL STYLES ===== */
+/* ===== CHURCH OF ATHENA - BIBLICAL CATHEDRAL THEME ===== */
 *,
 *::before,
 *::after {
@@ -8,29 +8,37 @@
 }
 
 :root {
-  /* Color Palette - Light Pink Theme */
-  --color-bg-primary: #fff0f5; /* LavenderBlush */
-  --color-bg-secondary: #fce7f3; /* Pink 100 */
-  --color-bg-card: rgba(255, 255, 255, 0.85);
-  --color-bg-card-border: rgba(236, 72, 153, 0.2);
-  --color-gold: #ec4899; /* Pink 500 */
-  --color-gold-hover: #db2777; /* Pink 600 */
-  --color-gold-dark: #be185d; /* Pink 700 */
-  --color-gold-muted: rgba(236, 72, 153, 0.15);
-  --color-text-primary: #111827; /* Gray 900 */
-  --color-text-secondary: #374151; /* Gray 700 */
-  --color-text-muted: #6b7280; /* Gray 500 */
-  --color-border: rgba(236, 72, 153, 0.2);
-  --color-border-hover: rgba(236, 72, 153, 0.4);
-  --color-success: #10b981; /* Emerald 500 */
-  --color-accent: #f43f5e; /* Rose 500 */
-  --color-accent-hover: #e11d48; /* Rose 600 */
-  --color-overlay: rgba(255, 255, 255, 0.8);
+  /* Color Palette - Cathedral Wine & Gold */
+  --color-bg-primary: #0a0812; /* Deep chapel black-blue */
+  --color-bg-secondary: #130f24; /* Dark violet-navy */
+  --color-bg-card: rgba(22, 17, 40, 0.85);
+  --color-bg-card-border: rgba(201, 168, 76, 0.25);
+  
+  /* Gold & Wine Accents */
+  --color-gold: #c9a84c; /* Antique Holy Gold */
+  --color-gold-hover: #e5be58; /* Brightened Shrine Gold */
+  --color-gold-dark: #8c6e26; /* Aged Cathedral Bronze */
+  --color-gold-muted: rgba(201, 168, 76, 0.15);
+  
+  /* Wine & Crimson */
+  --color-accent: #72162b; /* Deep Altar Wine Red */
+  --color-accent-hover: #a1233f; /* Stained Glass Crimson */
+  
+  /* Text */
+  --color-text-primary: #f2e9d8; /* Parchment Ivory */
+  --color-text-secondary: #c4b69c; /* Ancient Scroll Linen */
+  --color-text-muted: #857864; /* Crypt Dust Gray */
+  
+  /* Borders */
+  --color-border: rgba(201, 168, 76, 0.2);
+  --color-border-hover: rgba(201, 168, 76, 0.45);
+  --color-success: #2e8b57; /* Sacred Emerald Green */
+  --color-overlay: rgba(10, 8, 18, 0.88);
 
   /* Typography */
-  --font-display: 'Playfair Display', Georgia, serif;
-  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-heading: 'Outfit', 'Inter', sans-serif;
+  --font-display: 'Cinzel Decorative', serif;
+  --font-heading: 'Cormorant Garamond', Georgia, serif;
+  --font-body: 'Crimson Text', serif;
 
   /* Spacing */
   --space-xs: 0.25rem;
@@ -55,10 +63,10 @@
   --duration-normal: 300ms;
   --duration-slow: 500ms;
 
-  /* Shadows */
-  --shadow-glow: 0 0 30px rgba(212, 168, 67, 0.15);
-  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
-  --shadow-elevated: 0 20px 60px rgba(0, 0, 0, 0.5);
+  /* Shadows & Glows */
+  --shadow-glow: 0 0 30px rgba(201, 168, 76, 0.25);
+  --shadow-card: 0 10px 40px rgba(0, 0, 0, 0.7);
+  --shadow-elevated: 0 25px 70px rgba(0, 0, 0, 0.85);
 }
 
 html {
@@ -74,6 +82,9 @@ body {
   color: var(--color-text-primary);
   line-height: 1.6;
   overflow-x: hidden;
+  background-image: 
+    radial-gradient(ellipse at 50% 0%, rgba(114, 22, 43, 0.2) 0%, transparent 70%),
+    radial-gradient(ellipse at 50% 100%, rgba(201, 168, 76, 0.1) 0%, transparent 60%);
 }
 
 a {
@@ -84,7 +95,7 @@ a {
 button {
   border: none;
   cursor: pointer;
-  font-family: var(--font-body);
+  font-family: var(--font-heading);
 }
 
 img {
@@ -99,30 +110,31 @@ ul, ol {
 /* Selection styling */
 ::selection {
   background: var(--color-gold);
-  color: var(--color-bg-primary);
+  color: #000;
 }
 
-/* Scrollbar */
+/* Cathedral Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
 }
 ::-webkit-scrollbar-track {
   background: var(--color-bg-primary);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(212, 168, 67, 0.3);
+  background: rgba(201, 168, 76, 0.35);
   border-radius: var(--radius-full);
+  border: 2px solid var(--color-bg-primary);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(212, 168, 67, 0.5);
+  background: rgba(201, 168, 76, 0.65);
 }
 
 /* ===== GLOBAL ANIMATIONS ===== */
 @keyframes heartbeat-pulse {
-  0% { transform: scale(1); box-shadow: 0 0 10px rgba(212, 168, 67, 0.2); }
-  15% { transform: scale(1.03); box-shadow: 0 0 25px rgba(212, 168, 67, 0.5); }
-  30% { transform: scale(1); box-shadow: 0 0 10px rgba(212, 168, 67, 0.2); }
-  100% { transform: scale(1); box-shadow: 0 0 10px rgba(212, 168, 67, 0.2); }
+  0% { transform: scale(1); box-shadow: 0 0 10px rgba(201, 168, 76, 0.2); }
+  15% { transform: scale(1.02); box-shadow: 0 0 25px rgba(201, 168, 76, 0.4); }
+  30% { transform: scale(1); box-shadow: 0 0 10px rgba(201, 168, 76, 0.2); }
+  100% { transform: scale(1); box-shadow: 0 0 10px rgba(201, 168, 76, 0.2); }
 }
 
 @keyframes shimmer-sweep {
@@ -131,14 +143,14 @@ ul, ol {
 }
 
 @keyframes levitate {
-  0% { transform: translateY(0) rotate(1deg); }
-  50% { transform: translateY(-12px) rotate(0deg); box-shadow: 0 40px 90px rgba(0, 0, 0, 0.7), var(--shadow-glow); }
-  100% { transform: translateY(0) rotate(1deg); }
+  0% { transform: translateY(0) rotate(0.5deg); }
+  50% { transform: translateY(-10px) rotate(0deg); box-shadow: 0 40px 90px rgba(0, 0, 0, 0.9), var(--shadow-glow); }
+  100% { transform: translateY(0) rotate(0.5deg); }
 }
 
 @keyframes hypnotic-glow {
-  0%, 100% { filter: drop-shadow(0 0 8px rgba(212, 168, 67, 0.3)); }
-  50% { filter: drop-shadow(0 0 25px rgba(212, 168, 67, 0.7)); }
+  0%, 100% { filter: drop-shadow(0 0 8px rgba(201, 168, 76, 0.4)); }
+  50% { filter: drop-shadow(0 0 25px rgba(201, 168, 76, 0.8)); }
 }
 
 @keyframes float-up-fade {
@@ -147,13 +159,13 @@ ul, ol {
 }
 
 @keyframes scaleIn {
-  0% { opacity: 0; transform: scale(0.8); }
-  60% { transform: scale(1.05); }
+  0% { opacity: 0; transform: scale(0.85); }
+  60% { transform: scale(1.02); }
   100% { opacity: 1; transform: scale(1); }
 }
 
 @keyframes slideInUp {
-  0% { opacity: 0; transform: translateY(60px); }
+  0% { opacity: 0; transform: translateY(50px); }
   100% { opacity: 1; transform: translateY(0); }
 }
 
@@ -180,13 +192,8 @@ ul, ol {
 }
 
 @keyframes borderGlow {
-  0%, 100% { box-shadow: 0 0 5px rgba(236, 72, 153, 0.2), 0 0 15px rgba(236, 72, 153, 0.1); }
-  50% { box-shadow: 0 0 20px rgba(236, 72, 153, 0.4), 0 0 40px rgba(236, 72, 153, 0.2); }
-}
-
-@keyframes ripple {
-  0% { transform: scale(0); opacity: 0.5; }
-  100% { transform: scale(4); opacity: 0; }
+  0%, 100% { box-shadow: 0 0 5px rgba(201, 168, 76, 0.2); }
+  50% { box-shadow: 0 0 25px rgba(201, 168, 76, 0.5); }
 }
 
 @keyframes spin {
@@ -198,53 +205,4 @@ ul, ol {
   0% { transform: scale(1) translate(0, 0); }
   50% { transform: scale(1.08) translate(-1%, -1%); }
   100% { transform: scale(1) translate(0, 0); }
-}
-
-@keyframes wiggle {
-  0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(-8deg); }
-  75% { transform: rotate(8deg); }
-}
-
-@keyframes breathe {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
-}
-
-@keyframes slideDown {
-  0% { opacity: 0; transform: translateY(-100%); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes popIn {
-  0% { opacity: 0; transform: scale(0.5); }
-  70% { transform: scale(1.1); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
-@keyframes modalEnter {
-  0% { opacity: 0; transform: scale(0.9) translateY(20px); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-@keyframes backdropFade {
-  0% { opacity: 0; backdrop-filter: blur(0px); }
-  100% { opacity: 1; backdrop-filter: blur(8px); }
-}
-
-@keyframes progressStripe {
-  0% { background-position: 0 0; }
-  100% { background-position: 40px 0; }
-}
-
-@keyframes bounceCheck {
-  0% { transform: scale(0); }
-  50% { transform: scale(1.3); }
-  70% { transform: scale(0.9); }
-  100% { transform: scale(1); }
-}
-
-@keyframes glowPulse {
-  0%, 100% { box-shadow: 0 0 5px rgba(236, 72, 153, 0.3); }
-  50% { box-shadow: 0 0 25px rgba(236, 72, 153, 0.6), 0 0 50px rgba(236, 72, 153, 0.3); }
 }
